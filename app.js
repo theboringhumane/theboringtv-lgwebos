@@ -427,9 +427,10 @@
     } else if (view === 'home') {
       nav = [top, [$('heroBtn')]].concat(all('#rows .strip').map(function (s) { return [].slice.call(s.children); }));
     } else {
-      var tiles = all('#grid .app'), cols = 9;
+      // rows are whatever the tiles actually wrap into (their top edge), not an assumed number of columns
+      var tiles = all('#grid .app'), rowTop = null, line;
       nav = [top];
-      for (var i = 0; i < tiles.length; i += cols) nav.push(tiles.slice(i, i + cols));
+      tiles.forEach(function (t) { if (t.offsetTop !== rowTop) { rowTop = t.offsetTop; line = []; nav.push(line); } line.push(t); });
     }
     nav = nav.filter(function (r) { return r.length; });
     pos.r = Math.min(pos.r, nav.length - 1);
@@ -475,6 +476,9 @@
     if (e.id === 'heroBtn') return TV.itemOk(heroItems[heroIdx]);
     if (e.onok) e.onok();
   }
+  // Column to land on when moving to row `to`. Rows of cards each remember their own column; the grid of apps is a real grid,
+  // so there the column stays the same (the focus() clamp handles a shorter last row).
+  function columnFor(to) { return view === 'apps' && pos.r > 0 && to > 0 ? pos.c : (mem[to] || 0); }
   var holdTimer = 0, holdFired = false, moving = null;
   document.addEventListener('keyup', function (ev) {
     if (ev.keyCode !== 13) return;
@@ -489,8 +493,8 @@
     if (views[view] && views[view].keydown && views[view].keydown(ev)) { ev.preventDefault(); return; } // view handled it
     if (k === 37) { if (onHero) stepHero(-1); else pos.c--; }
     else if (k === 39) { if (onHero) stepHero(1); else pos.c++; }
-    else if (k === 38) { if (pos.r > 0) { pos.r--; pos.c = mem[pos.r] || 0; } }
-    else if (k === 40) { if (pos.r < nav.length - 1) { pos.r++; pos.c = mem[pos.r] || 0; } }
+    else if (k === 38) { if (pos.r > 0) { pos.c = columnFor(pos.r - 1); pos.r--; } }
+    else if (k === 40) { if (pos.r < nav.length - 1) { pos.c = columnFor(pos.r + 1); pos.r++; } }
     else if (k === 13) {
       ev.preventDefault();
       var cur = nav[pos.r][pos.c];
@@ -515,8 +519,8 @@
     if (Math.abs(dy) < 4 && Math.abs(dx) < 4) return;
     wheelAt = Date.now(); idleSince = wheelAt;
     if (Math.abs(dx) > Math.abs(dy)) { if (view === 'home' && pos.r === 1) stepHero(dx > 0 ? 1 : -1); else pos.c += dx > 0 ? 1 : -1; }
-    else if (dy > 0 && pos.r < nav.length - 1) { pos.r++; pos.c = mem[pos.r] || 0; }
-    else if (dy < 0 && pos.r > 0) { pos.r--; pos.c = mem[pos.r] || 0; }
+    else if (dy > 0 && pos.r < nav.length - 1) { pos.c = columnFor(pos.r + 1); pos.r++; }
+    else if (dy < 0 && pos.r > 0) { pos.c = columnFor(pos.r - 1); pos.r--; }
     focus();
   }, {passive: false});
   // Magic Remote pointer: hover moves focus, OK/click activates.
