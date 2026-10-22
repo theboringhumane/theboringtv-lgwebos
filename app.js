@@ -230,9 +230,18 @@
   function el(tag, cls, html) { var e = document.createElement(tag); if (cls) e.className = cls; if (html) e.innerHTML = html; return e; }
   function esc(s) { return String(s || '').replace(/[&<>"]/g, function (c) { return '&#' + c.charCodeAt(0) + ';'; }); }
 
+  // An app without an icon gets its name on its brand colour. The TV reports plain white for several apps (Netflix, YouTube...), and the
+  // name was always white, so it vanished. Dark text on a light colour, white otherwise (WCAG relative luminance; the split is high enough to leave mid-tone brand colours such as Spotify's green alone).
+  function inkFor(color) {
+    var m = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(color || '');
+    if (!m) return '#fff';
+    var h = m[1].length === 3 ? m[1].replace(/./g, '$&$&') : m[1];
+    var lin = function (i) { var c = parseInt(h.substr(i, 2), 16) / 255; return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); };
+    return 0.2126 * lin(0) + 0.7152 * lin(2) + 0.0722 * lin(4) > 0.4 ? '#202124' : '#fff';
+  }
   function appTile(a) {
     var t = el('div', 'app f');
-    t.innerHTML = '<div class="disc" style="background:' + a.color + '">' +
+    t.innerHTML = '<div class="disc" style="background:' + a.color + ';color:' + inkFor(a.color) + '">' +
       (a.img || a.icon ? '<img src="' + (a.img || 'icons/' + a.icon) + '" alt="" decoding="async">' : '<span class="txt">' + esc(a.title) + '</span>') + '</div><div class="cap">' + esc(a.title) + '</div>';
     t.onok = function () { editing ? openAppMenu(a) : launch(a.id); };
     t.app = a;
