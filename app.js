@@ -745,6 +745,7 @@
     ]).then(function (r) {
       var picks = mergePicks(r[1] || [], r[0] || []); // JustWatch first, then TMDB
       if (!picks.length && !(r[2] || []).filter(Boolean).length) { // nothing yet (early boot, network not up): retry
+        if (!C.TMDB_KEY) { if (!cached) setText('bootmsg', 'TMDB key missing: add it to keys.js'); return; } // no key: retrying cannot help
         if (++tries < 40) { if (!cached) setText('bootmsg', 'Waiting for the internet…'); setTimeout(loadHome, 5000); }
         return;
       }
