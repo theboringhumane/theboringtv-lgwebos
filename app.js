@@ -241,15 +241,16 @@
   var CHECK = '<svg viewBox="0 0 24 24" style="width:50px;height:50px"><path fill="currentColor" d="M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z"/></svg>';
   function editTile() {
     var t = el('div', 'app f edit-tile', '<div class="disc">' + (editing ? CHECK : PENCIL) + '</div><div class="cap">' + (editing ? 'Done' : 'Edit apps') + '</div>');
-    t.onok = function () {
-      editing = !editing;
-      document.body.classList.toggle('editing', editing);
-      if (!editing) endMove();
-      var keep = view; render(); if (keep !== view) setView(keep);
-      var tiles = document.querySelectorAll('.edit-tile'); for (var i = 0; i < tiles.length; i++) if (!tiles[i].offsetParent) continue; else { focusEl(tiles[i]); break; }
-      toast(editing ? 'Edit mode: OK on an app to move or remove it' : 'Done');
-    };
+    t.onok = function () { setEditing(!editing); };
     return t;
+  }
+  function setEditing(on) {
+    editing = on;
+    document.body.classList.toggle('editing', editing);
+    if (!editing) endMove();
+    var keep = view; render(); if (keep !== view) setView(keep);
+    var tiles = document.querySelectorAll('.edit-tile'); for (var i = 0; i < tiles.length; i++) if (!tiles[i].offsetParent) continue; else { focusEl(tiles[i]); break; }
+    toast(editing ? 'Edit mode: OK on an app to move or remove it' : 'Done');
   }
   function focusEl(e) { for (var r = 0; r < nav.length; r++) { var c = nav[r].indexOf(e); if (c >= 0) { pos.r = r; pos.c = c; focus(); return; } } }
   function card(it) {
@@ -455,12 +456,16 @@
     bgFor(e.item, dy > 0);
   }
   function setView(v) {
+    // leaving a page ends the edit mode: it must not follow the user to the other page
+    var wasEditing = editing && v !== view;
+    if (wasEditing) { editing = false; document.body.classList.remove('editing'); endMove(); }
     view = v; $('home').hidden = v !== 'home'; $('apps').hidden = v !== 'apps';
     all('.tab').forEach(function (t) { t.classList.toggle('cur', t.dataset.tab === v); });
     $('bg').style.opacity = v === 'home' ? 1 : 0;
     $('bgBlur').style.visibility = v === 'home' || v === 'settings' || v === 'quick' ? '' : 'hidden';
     document.body.classList.toggle('scrolled', v !== 'home');
     buildNav();
+    if (wasEditing) render();
   }
   function activate(e) {
     if (e.dataset.tab) return setView(e.dataset.tab);
@@ -501,7 +506,8 @@
       }
       return activate(cur);
     }
-    else if (k === 461 || k === 27 || k === 8) { if (views[view]) return views[view].back ? views[view].back() : closeView(); if (view === 'settings') return closeSettings(); if (view === 'quick') return closeQuick(); if (view !== 'home') setView('home'); else { pos.r = 1; pos.c = 0; } }
+    else if (k === 461 || k === 27 || k === 8) { if (editing) { ev.preventDefault(); return setEditing(false); } // Back cancels the edit mode first
+      if (views[view]) return views[view].back ? views[view].back() : closeView(); if (view === 'settings') return closeSettings(); if (view === 'quick') return closeQuick(); if (view !== 'home') setView('home'); else { pos.r = 1; pos.c = 0; } }
     else return;
     ev.preventDefault();
     focus();
