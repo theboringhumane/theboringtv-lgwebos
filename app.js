@@ -366,7 +366,13 @@
       tip: function () { closeQuick(); openSettings(); },
       close: closeQuick,
       screensaver: function () { launch('com.webos.app.screensaver'); },
-      inputs: function () { launch('com.webos.app.inputcommon'); },
+      // On some webOS 25 TVs com.webos.app.inputcommon has no visible window (a transparent native card), so Inputs showed a black
+      // screen. The input picker there is the overlay app quickinputpicker; keep inputcommon for firmware that does not have it.
+      inputs: function () {
+        closeQuick();
+        luna('com.webos.applicationManager/getAppLoadStatus', {appId: 'com.webos.app.quickinputpicker'})
+          .then(function (r) { launch(r.exist ? 'com.webos.app.quickinputpicker' : 'com.webos.app.inputcommon'); }, function () { launch('com.webos.app.inputcommon'); });
+      },
       wifi: function () { tvSettings('network'); },
       a11y: function () { tvSettings('accessibility'); },
       audio: function () { tvSettings('sound'); },
