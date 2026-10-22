@@ -43,12 +43,14 @@ function iconData(path) { // launch-point icons live in other apps' folders the 
   return iconCache[path];
 }
 var SKIP_APPS = ['com.webos.app.home', 'com.boring.tvhome'];
-var iconPath = {}; // app id -> icon file, filled by getApps; getIcon only serves these (no arbitrary file reads)
+// app id -> icon file, filled by getApps; getIcon only serves these (no arbitrary file reads).
+// The biggest icon the TV offers is used (extraLargeIcon is 192 px on webOS 25, the others 80-130 px): the tiles are drawn at ~150 px.
+var iconPath = {};
 var api = {
   getApps: function () {
     return lunaRoot('luna://com.webos.applicationManager/listLaunchPoints').then(function (r) {
       return {returnValue: !!r.launchPoints, apps: (r.launchPoints || []).filter(function (p) { return !p.hidden && SKIP_APPS.indexOf(p.id) < 0; })
-        .map(function (p) { iconPath[p.id] = p.mediumLargeIcon || p.largeIcon || p.icon; return {id: p.id, title: p.title, color: p.bgColor || p.iconColor}; })};
+        .map(function (p) { iconPath[p.id] = p.extraLargeIcon || p.largeIcon || p.mediumLargeIcon || p.icon; return {id: p.id, title: p.title, color: p.bgColor || p.iconColor}; })};
     });
   },
   getIcon: function (p) { return Promise.resolve({returnValue: true, icon: iconData(iconPath[p.id])}); },

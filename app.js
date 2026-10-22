@@ -52,18 +52,21 @@
     return fetch('http://127.0.0.1:45620/' + name, {method: 'POST', body: JSON.stringify(params || {})})
       .then(function (r) { return r.json(); });
   }
+  // Icons are cached by app id and never refreshed, so the key carries a version: bump it whenever the icon the service picks
+  // changes (e.g. a bigger size), or users keep the old copies for good. The unversioned key of earlier releases is deleted on load.
+  var ICON_CACHE = 'appIcons.v2';
   function loadApps() {
     if (!onTV) { apps = C.APPS.slice(); return Promise.resolve(); }
     // Real installed apps and icons when the service is running (rooted TV); otherwise probe config.js's list.
     return svc('getApps').then(function (r) {
       if (!r.apps || !r.apps.length) throw new Error('no apps');
       var icons = {};
-      try { icons = JSON.parse(localStorage.appIcons || '{}'); } catch (e) { /* storage unavailable */ }
+      try { icons = JSON.parse(localStorage.getItem(ICON_CACHE) || '{}'); localStorage.removeItem('appIcons'); } catch (e) { /* storage unavailable */ }
       apps = r.apps;
       return Promise.all(apps.map(function (a) {
         if (icons[a.id]) { a.img = icons[a.id]; return null; }
         return svc('getIcon', {id: a.id}).then(function (i) { if (i.icon) a.img = icons[a.id] = i.icon; }, function () {});
-      })).then(function () { try { localStorage.appIcons = JSON.stringify(icons); } catch (e) { /* too big or blocked */ } });
+      })).then(function () { try { localStorage.setItem(ICON_CACHE, JSON.stringify(icons)); } catch (e) { /* too big or blocked */ } });
     }).catch(probeApps);
   }
   function probeApps() {
